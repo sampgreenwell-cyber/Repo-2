@@ -50,7 +50,7 @@ resolve `*.localhost` correctly, so no hosts file changes should be required).
 ### Tearing it down
 
 When you're done, simply remove the containers by running the following command:
-
+this is a test to make sure github actions is working correctl
 ```
 docker compose down
 ```
