@@ -17,19 +17,36 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    # Step 2: Build Docker image
-    - name: Build Docker image
-      run: docker build -t todo-app .
+    # Step 2: Login to GitHub Container Registry
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     
-    # Step 3: Run the container (basic test)
+    # Step 3: Build Docker image with proper tags
+    - name: Build Docker image
+      run: |
+        docker build -t ghcr.io/${{ github.repository_owner }}/todo-app:latest .
+        docker build -t ghcr.io/${{ github.repository_owner }}/todo-app:${{ github.sha }} .
+    
+    # Step 4: Test the container
     - name: Test Docker container
       run: |
-        docker run -d -p 3000:3000 --name test-app todo-app
+        docker run -d -p 3000:3000 --name test-app ghcr.io/${{ github.repository_owner }}/todo-app:latest
         sleep 10
         docker ps
         docker stop test-app
         docker rm test-app
     
-    # Step 4: Show success message
-    - name: Build successful
-      run: echo "✅ Docker build and test completed successfully!"
+    # Step 5: Push Docker image to registry
+    - name: Push Docker image
+      if: github.event_name == 'push'
+      run: |
+        docker push ghcr.io/${{ github.repository_owner }}/todo-app:latest
+        docker push ghcr.io/${{ github.repository_owner }}/todo-app:${{ github.sha }}
+    
+    # Step 6: Show success message
+    - name: Build and push successful
+      run: echo "✅ Docker build, test, and push completed successfully!"
