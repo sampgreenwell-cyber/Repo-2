@@ -1,0 +1,35 @@
+name: CI/CD Pipeline
+
+# When this workflow runs
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# The jobs to run
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Step 1: Get the code
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    # Step 2: Build Docker image
+    - name: Build Docker image
+      run: docker build -t todo-app .
+    
+    # Step 3: Run the container (basic test)
+    - name: Test Docker container
+      run: |
+        docker run -d -p 3000:3000 --name test-app todo-app
+        sleep 10
+        docker ps
+        docker stop test-app
+        docker rm test-app
+    
+    # Step 4: Show success message
+    - name: Build successful
+      run: echo "✅ Docker build and test completed successfully!"
