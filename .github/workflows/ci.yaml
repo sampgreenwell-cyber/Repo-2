@@ -1,4 +1,4 @@
-nname: CI/CD Pipeline with EKS Deployment
+name: CI/CD Pipeline with EKS Deployment
 
 # When this workflow runs
 on:
