@@ -1,0 +1,86 @@
+name: CI/CD Pipeline with EKS Deployment
+
+# When this workflow runs
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Environment variables
+env:
+  AWS_REGION: us-east-2
+  EKS_CLUSTER_NAME: adorable-jazz-gopher
+
+# The jobs to run
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Step 1: Get the code
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    # Step 2: Configure AWS credentials
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    # Step 3: Login to GitHub Container Registry
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    # Step 4: Build Docker image with proper tags
+    - name: Build Docker image
+      run: |
+        docker build -t ghcr.io/sampgreenwell-cyber/todo-app:latest .
+        docker build -t ghcr.io/sampgreenwell-cyber/todo-app:${{ github.sha }} .
+    
+    # Step 5: Test the container
+    - name: Test Docker container
+      run: |
+        docker run -d -p 3000:3000 --name test-app ghcr.io/sampgreenwell-cyber/todo-app:latest
+        sleep 10
+        docker ps
+        docker stop test-app
+        docker rm test-app
+    
+    # Step 6: Push Docker image to registry
+    - name: Push Docker image
+      if: github.event_name == 'push'
+      run: |
+        docker push ghcr.io/sampgreenwell-cyber/todo-app:latest
+        docker push ghcr.io/sampgreenwell-cyber/todo-app:${{ github.sha }}
+    
+    # Step 7: Deploy to EKS
+    - name: Deploy to EKS
+      if: github.event_name == 'push'
+      run: |
+        # Update kubeconfig for EKS
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+        
+        # Apply Kubernetes manifests
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service-eks.yaml
+        
+        # Update deployment with new image
+        kubectl set image deployment/todo-app todo-app=ghcr.io/sampgreenwell-cyber/todo-app:${{ github.sha }}
+        
+        # Wait for rollout to complete
+        kubectl rollout status deployment/todo-app
+        
+        # Get service URL
+        echo "🚀 Deployment complete!"
+        kubectl get service todo-app-service
+    
+    # Step 8: Show success message
+    - name: Build and deploy successful
+      run: echo "✅ Complete CI/CD pipeline executed successfully!"
