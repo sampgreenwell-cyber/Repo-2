@@ -2,7 +2,7 @@ name: Deploy to Fargate
 
 on:
   push:
-    branches: [ fargate ]  # Only triggers on fargate branch
+    branches: [ main ]  # Only triggers on fargate branch
   workflow_dispatch:
 
 env:
