@@ -46,7 +46,7 @@ jobs:
         image: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
         name: ${{ env.CONTAINER_NAME }}-${{ github.run_number }}
         location: eastus
-        ports: 80 3000 8080
+        ports: 80
         cpu: 1
         memory: 1.5
         registry-login-server: ${{ env.REGISTRY_LOGIN_SERVER }}
