@@ -1,0 +1,54 @@
+name: Deploy to Azure Container Instances
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY_LOGIN_SERVER: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}
+  REGISTRY_USERNAME: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+  REGISTRY_PASSWORD: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+  RESOURCE_GROUP: todoapp-rg
+  CONTAINER_NAME: todoapp
+  IMAGE_NAME: todoapp
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.REGISTRY_LOGIN_SERVER }}
+        username: ${{ env.REGISTRY_USERNAME }}
+        password: ${{ env.REGISTRY_PASSWORD }}
+
+    - name: Build and push Docker image
+      run: |
+        docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+    - name: Deploy to Azure Container Instances
+      uses: azure/aci-deploy@v1
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        dns-name-label: todoapp-${{ github.run_number }}
+        image: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        name: ${{ env.CONTAINER_NAME }}-${{ github.run_number }}
+        location: eastus
+        ports: 80 3000 8080
+        cpu: 1
+        memory: 1.5
+        registry-login-server: ${{ env.REGISTRY_LOGIN_SERVER }}
+        registry-username: ${{ env.REGISTRY_USERNAME }}
+        registry-password: ${{ env.REGISTRY_PASSWORD }}
